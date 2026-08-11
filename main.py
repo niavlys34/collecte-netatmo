@@ -1,7 +1,8 @@
 import os, requests, json, time
 from dotenv import load_dotenv
+from typing import Any #Facultatif, pour pyright
 
-load_dotenv()  # charge le .env situé dans le même dossier que le script
+load_dotenv()  #Charge le .env situé dans le même dossier que le script
 
 CLIENT_ID = os.environ["NETATMO_CLIENT_ID"]
 CLIENT_SECRET = os.environ["NETATMO_CLIENT_SECRET"]
@@ -43,18 +44,18 @@ def main():
     module_principal = data["body"]["devices"][0]
     nom_principal = module_principal.get("module_name")
 
-    result = {
+    collecte: dict[str, Any] = { #Précision facultative, pour pyright
         nom_principal: extract_module(module_principal),
     }
 
     for module in module_principal["modules"]:
         nom = module.get("module_name")
-        result[nom] = extract_module(module)
+        collecte[nom] = extract_module(module)
 
-    result["updated_at"] = int(time.time()) #Heure de l'exécution de ce programme (=génération du JSON)
+    collecte["updated_at"] = int(time.time()) #Heure de l'exécution de ce programme (=génération du JSON)
 
     with open(os.path.join(OUTPUT_DIR, "meteo.json"), "w") as f:
-        json.dump(result, f, indent=2)
+        json.dump(collecte, f, indent=2)
 
 if __name__ == "__main__":
     main()
