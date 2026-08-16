@@ -29,16 +29,27 @@ def get_access_token():
         raise
     return r.json()["access_token"]
 
-def fetch_data():
+def fetch_data(max_retries=3, backoff=10):
     token = get_access_token()
-    r = requests.get("https://api.netatmo.com/api/getstationsdata",
-                      headers={"Authorization": f"Bearer {token}"})
-    try:
-        r.raise_for_status()
-    except requests.exceptions.HTTPError:
-        logging.error(f"Erreur get data {r.status_code}: {r.text}")
-        raise
-    return r.json()
+    for attempt in range(1, max_retries + 1):
+        r = requests.get(
+            "https://api.netatmo.com/api/getstationsdata",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        if r.ok:
+            return r.json()
+
+        logging.warning(
+            f"Tentative {attempt}/{max_retries} échouée "
+            f"({r.status_code}): {r.text}"
+        )
+
+        if attempt < max_retries:
+            time.sleep(backoff * attempt)  # backoff progressif
+        else:
+            logging.error(f"Erreur get data {r.status_code}: {r.text}")
+            r.raise_for_status()
+    return {} #pour pyright...
 
 def extract_module(module):
     dd = module.get("dashboard_data", {}) #dd pour dashboad_data
