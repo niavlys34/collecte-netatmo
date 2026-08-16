@@ -1,4 +1,4 @@
-import os, requests, json, time
+import os, requests, json, time, logging
 from dotenv import load_dotenv
 from typing import Any #Facultatif, pour pyright
 
@@ -9,6 +9,12 @@ CLIENT_SECRET = os.environ["NETATMO_CLIENT_SECRET"]
 REFRESH_TOKEN = os.environ["NETATMO_REFRESH_TOKEN"]
 OUTPUT_DIR = os.environ.get("OUTPUT_DIR", "./")
 
+logging.basicConfig(
+    filename=os.path.join(OUTPUT_DIR, "collecte-netatmo.log"),
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+)
+
 def get_access_token():
     r = requests.post("https://api.netatmo.com/oauth2/token", data={
         "grant_type": "refresh_token",
@@ -16,14 +22,22 @@ def get_access_token():
         "client_id": CLIENT_ID,
         "client_secret": CLIENT_SECRET,
     })
-    r.raise_for_status()
+    try:
+        r.raise_for_status()
+    except requests.exceptions.HTTPError:
+        logging.error(f"Erreur token {r.status_code}: {r.text}")
+        raise
     return r.json()["access_token"]
 
 def fetch_data():
     token = get_access_token()
     r = requests.get("https://api.netatmo.com/api/getstationsdata",
                       headers={"Authorization": f"Bearer {token}"})
-    r.raise_for_status()
+    try:
+        r.raise_for_status()
+    except requests.exceptions.HTTPError:
+        logging.error(f"Erreur get data {r.status_code}: {r.text}")
+        raise
     return r.json()
 
 def extract_module(module):
